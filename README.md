@@ -1,3 +1,4 @@
+## a decentralized stablecoin pegged to USD
 1. （Relative Stability） Anchored or Pegged -> usd
     1. Chainlink Price feed
     2. Set a function to exchange ETH & BTC -> $$$
