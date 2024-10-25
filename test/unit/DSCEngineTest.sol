@@ -66,14 +66,13 @@ contract DSCEngineTest is StdCheats, Test {
     }
 
     function testRevertsWithUnapprovedCollateral() public {
-        ERC20Mock random = new ERC20Mock();
+        ERC20Mock random = new ERC20Mock("RAN", "RAN", user, 100e18);
         vm.startPrank(user);
-        random.mint(user, amountCollateral);
-        random.approve(address(dsce), amountCollateral);
         vm.expectRevert(
             abi.encodeWithSelector(DSCEngine.DSCEngine_TokenNotAllowed.selector,address(random))
         );
-        dsce.depositCollateral(random, amountCollateral);
+        dsce.depositCollateral(address(random), amountCollateral);
+        vm.stopPrank();
     }
 
     function testGetUsdValue() public {
@@ -83,5 +82,207 @@ contract DSCEngineTest is StdCheats, Test {
         uint256 usdValue = dsce.getUsdValue(weth, ethAmount);
         assertEq(usdValue, expectedUsd);
     }
+
+    // this test needs it's own setup
+    function testRevertsIfTransferFromFails() public {
+
+    }
+
+    function testCanDepositCollateralWithoutMinting() public depositedCollateral {
+        
+    }
+
+    function testCanDepositedCollateralAndGetAccountInfo() public depositedCollateral {
+        
+    }
+
+    ///////////////////////////////////////
+    // depositCollateralAndMintDsc Tests //
+    ///////////////////////////////////////
+
+    function testRevertsIfMintedDscBreaksHealthFactor() public {
+        
+    }
+
+    modifier depositedCollateralAndMintedDsc() {
+        _;
+    }
+
+    function testCanMintWithDepositedCollateral() public depositedCollateralAndMintedDsc {
+        
+    }
+
+    ///////////////////////////////////
+    // mintDsc Tests //
+    ///////////////////////////////////
+    // This test needs it's own custom setup
+    function testRevertsIfMintFails() public {
+       
+    }
+
+    function testRevertsIfMintAmountIsZero() public {
+        
+    }
+
+    function testRevertsIfMintAmountBreaksHealthFactor() public depositedCollateral {
+        // 0xe580cc6100000000000000000000000000000000000000000000000006f05b59d3b20000
+        // 0xe580cc6100000000000000000000000000000000000000000000003635c9adc5dea00000
+        
+    }
+
+    function testCanMintDsc() public depositedCollateral {
+        
+    }
+
+    ///////////////////////////////////
+    // burnDsc Tests //
+    ///////////////////////////////////
+
+    function testRevertsIfBurnAmountIsZero() public {
+        
+    }
+
+    function testCantBurnMoreThanUserHas() public {
+        
+    }
+
+    function testCanBurnDsc() public depositedCollateralAndMintedDsc {
+        
+    }
+
+    ///////////////////////////////////
+    // redeemCollateral Tests //
+    //////////////////////////////////
+
+    // this test needs it's own setup
+    function testRevertsIfTransferFails() public {
+       
+       
+    }
+
+    function testRevertsIfRedeemAmountIsZero() public {
+       
+    }
+
+    function testCanRedeemCollateral() public depositedCollateral {
+        
+    }
+
+    function testEmitCollateralRedeemedWithCorrectArgs() public depositedCollateral {
+        
+    }
+    ///////////////////////////////////
+    // redeemCollateralForDsc Tests //
+    //////////////////////////////////
+
+    function testMustRedeemMoreThanZero() public depositedCollateralAndMintedDsc {
+        
+    }
+
+    function testCanRedeemDepositedCollateral() public {
+        
+    }
+
+    ////////////////////////
+    // healthFactor Tests //
+    ////////////////////////
+
+    function testProperlyReportsHealthFactor() public depositedCollateralAndMintedDsc {
+        
+    }
+
+    function testHealthFactorCanGoBelowOne() public depositedCollateralAndMintedDsc {
+        
+    }
+
+    ///////////////////////
+    // Liquidation Tests //
+    ///////////////////////
+
+    // This test needs it's own setup
+    function testMustImproveHealthFactorOnLiquidation() public {
+        
+    }
+
+    function testCantLiquidateGoodHealthFactor() public depositedCollateralAndMintedDsc {
+        
+    }
+
+    modifier liquidated() {
+        _;
+    }
+
+    function testLiquidationPayoutIsCorrect() public liquidated {
+        
+    }
+
+    function testUserStillHasSomeEthAfterLiquidation() public liquidated {
+        
+    }
+
+    function testLiquidatorTakesOnUsersDebt() public liquidated {
+        
+    }
+
+    function testUserHasNoMoreDebt() public liquidated {
+       
+    }
+
+    ///////////////////////////////////
+    // View & Pure Function Tests //
+    //////////////////////////////////
+    function testGetCollateralTokenPriceFeed() public {
+        
+    }
+
+    function testGetCollateralTokens() public {
+       
+    }
+
+    function testGetMinHealthFactor() public {
+        
+    }
+
+    function testGetLiquidationThreshold() public {
+        
+    }
+
+    function testGetAccountCollateralValueFromInformation() public depositedCollateral {
+        
+    }
+
+    function testGetCollateralBalanceOfUser() public {
+        
+    }
+
+    function testGetAccountCollateralValue() public {
+        
+    }
+
+    function testGetDsc() public {
+        
+    }
+
+    function testLiquidationPrecision() public {
+        
+    }
+
+    // How do we adjust our invariant tests for this?
+    // function testInvariantBreaks() public depositedCollateralAndMintedDsc {
+    //     MockV3Aggregator(ethUsdPriceFeed).updateAnswer(0);
+
+    //     uint256 totalSupply = dsc.totalSupply();
+    //     uint256 wethDeposted = ERC20Mock(weth).balanceOf(address(dsce));
+    //     uint256 wbtcDeposited = ERC20Mock(wbtc).balanceOf(address(dsce));
+
+    //     uint256 wethValue = dsce.getUsdValue(weth, wethDeposted);
+    //     uint256 wbtcValue = dsce.getUsdValue(wbtc, wbtcDeposited);
+
+    //     console.log("wethValue: %s", wethValue);
+    //     console.log("wbtcValue: %s", wbtcValue);
+    //     console.log("totalSupply: %s", totalSupply);
+
+    //     assert(wethValue + wbtcValue >= totalSupply);
+    // }
 }
 
