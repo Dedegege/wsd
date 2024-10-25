@@ -26,11 +26,54 @@ contract DSCEngineTest is StdCheats, Test {
     address public weth;
     address public wbtc;
     uint256 public deployerKey;
+    address[] public tokenAddressses;
+    address[] public priceFeedAddresses;
+    uint256 amountCollateral = 10 ether;
+    address public user = address(1);
     
     function setUp() public  {
         DeployDSC deployer = new DeployDSC();
         (dsc, dsce, config) = deployer.run();
         (ethUsdPriceFeed, btcUsdPriceFeed, weth, wbtc, deployerKey) = config.activeNetworkConfig();
+    }
+
+    function testRevertsIfTokenLengthDoesntMatchPriceFeeds() public {
+        tokenAddressses.push(weth);
+        priceFeedAddresses.push(ethUsdPriceFeed);
+        priceFeedAddresses.push(btcUsdPriceFeed);
+
+        vm.expectRevert(
+            DSCEngine.DSCEngine_TokenAddressesAndPriceFeedAddressesMustBeSameLength.selector
+        );
+        new DSCEngine(tokenAddressses,priceFeedAddresses,address(dsc));
+    }
+
+    function testGetTokenAmountFromUsd() public {
+        uint256 usdAmount = 100 ether;
+        uint256 expectedWeth = 0.05 ether;
+        uint256 actualWeth = dsce.getTokenAmountFromUsd(weth, usdAmount);
+        assertEq(expectedWeth, actualWeth);
+    }
+
+    function testRevertsIfCollateralZero() public {
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dsce), amountCollateral);
+        vm.expectRevert(
+            DSCEngine.DSCEngine_NeedsMoreThanZero.selector
+        );
+        dsce.depositCollateral(weth, 0);
+        vm.stopPrank();
+    }
+
+    function testRevertsWithUnapprovedCollateral() public {
+        ERC20Mock random = new ERC20Mock();
+        vm.startPrank(user);
+        random.mint(user, amountCollateral);
+        random.approve(address(dsce), amountCollateral);
+        vm.expectRevert(
+            abi.encodeWithSelector(DSCEngine.DSCEngine_TokenNotAllowed.selector,address(random))
+        );
+        dsce.depositCollateral(random, amountCollateral);
     }
 
     function testGetUsdValue() public {
