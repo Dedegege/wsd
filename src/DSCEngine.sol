@@ -36,6 +36,8 @@ contract DSCEngine is ReentrancyGuard{
     error DSCEngine_HealthFactorOk();
     error DSCEngine_HealthFactorNotImproved();
 
+    using OracleLib for AggregatorV3Interface;
+
     uint256 private constant LIQUIDATION_THRESHOLD = 50; // This means you need to be 200% over-collateralized
     uint256 private constant LIQUIDATION_PRECISION = 100;
     uint256 private constant PRECISION = 1e18;
@@ -75,7 +77,7 @@ contract DSCEngine is ReentrancyGuard{
         // USD Price Feeds
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
             s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
-            s_collateralTokens.push(priceFeedAddresses[i]);
+            s_collateralTokens.push(tokenAddresses[i]);
         }
         i_dsc = DecentralizedStableCoin(dscAddress);
     }
@@ -230,6 +232,20 @@ contract DSCEngine is ReentrancyGuard{
         collateralValueInUsd = getAccountCollateralValueInUsd(user);
     }
 
+    function _calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        if (totalDscMinted == 0) return type(uint256).max;
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
+    }
+
+
     /*
      * Returns how close to liquidation a user is
      * If a user goes below 1, then they can get liquidated
@@ -238,6 +254,7 @@ contract DSCEngine is ReentrancyGuard{
        // total DSC minted
        // total collateral VALUE
        (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInfo(user);
+       if (totalDscMinted == 0) return type(uint256).max;
        uint256 collateralAdjustedForthreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
        return (collateralAdjustedForthreshold * PRECISION) / totalDscMinted;
     }
@@ -249,11 +266,14 @@ contract DSCEngine is ReentrancyGuard{
 
     function _getUsdValue(address token, uint256 amount) private view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
-        // If 1 ETH = 1000 USD
-        // Then the returned value from Chainlink will be 1000 * 1e8
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
+        // If 1 ETH = 2000 USD
+        // Then the returned value from Chainlink will be 2000 * 1e8 -> 2000 0000 0000
         // Most USD pairs have 8 decimals, so we will just pretend they all do
         // We want to have everything in terms of WEI, so we add 10 zeros at the end
+        // PRECISION = 1e18
+        // ADDITIONAL_FEED_PRECISION = 1e10
+        // can get 2000 * 1e19 when amount is 10 ether
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
 
@@ -262,13 +282,42 @@ contract DSCEngine is ReentrancyGuard{
     // External & Public View & Pure Functions
     ////////////////////////////////////////////////////////////////////////////
 
+    function calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    )
+        external
+        pure
+        returns (uint256)
+    {
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
+    function getAccountInfo(address user)
+        external
+        view
+        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
+    {
+        return _getAccountInfo(user);
+    }
+
+    function getCollateralAmount(address token)
+        external
+        view
+        returns (uint256)
+    {
+        return s_collateralDeposited[msg.sender][token];
+    }
+
     function getTokenAmountFromUsd(address tokenAddress, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[tokenAddress]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
-        // $100e18 USD Debt
-        // 1 ETH = 2000 USD
-        // The returned value from Chainlink will be 2000 * 1e8
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
+        // $10e18 USD Debt
+        // 1 ETH = 2000 USD 
+        // The returned value from Chainlink will be 2000 * 1e8 -> 200000000000
         // Most USD pairs have 8 decimals, so we will just pretend they all do
+        // PRECISION = 1e18;
+        // ADDITIONAL_FEED_PRECISION = 1e10;
         return ((usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION));
     }
 
@@ -279,8 +328,9 @@ contract DSCEngine is ReentrancyGuard{
         for (uint256 i = 0; i < s_collateralTokens.length; i++) {
             address token = s_collateralTokens[i];
             uint256 amount = s_collateralDeposited[user][token];
-            totalCollateralValueInUsd += _getUsdValue(token, amount);
+            if(amount > 0) totalCollateralValueInUsd += _getUsdValue(token, amount);
         }
+        return totalCollateralValueInUsd;
     }
 
     function getUsdValue(
@@ -294,7 +344,13 @@ contract DSCEngine is ReentrancyGuard{
         return _getUsdValue(token, amount);
     }
 
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
+    }
 
+    function getCollateralTokenPriceFeed(address token) external view returns (address) {
+        return s_priceFeeds[token];
+    }
 
 
 }
