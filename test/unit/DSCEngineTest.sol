@@ -159,7 +159,8 @@ contract DSCEngineTest is StdCheats, Test {
     }
 
     function testCanMintWithDepositedCollateral() public depositedCollateralAndMintedDsc {
-        
+        uint256 amount = dsc.balanceOf(user);
+        assertEq(amount, amountToMint);
     }
 
     ///////////////////////////////////
@@ -167,21 +168,32 @@ contract DSCEngineTest is StdCheats, Test {
     ///////////////////////////////////
     // This test needs it's own custom setup
     function testRevertsIfMintFails() public {
-       
+        MockFailedMintDSC mockDsc = new MockFailedMintDSC(address(this));
+        tokenAddressses = [address(mockDsc)];
+        priceFeedAddresses = [ethUsdPriceFeed];
+        DSCEngine mockDsce = new DSCEngine(tokenAddressses, priceFeedAddresses, address(mockDsc));
+        mockDsc.mint(user, amountCollateral);
+        mockDsc.transferOwnership(address(mockDsce));
+
+        vm.startPrank(user);
+        ERC20Mock(address(mockDsc)).approve(address(mockDsce),amountCollateral);
+        vm.expectRevert(DSCEngine.DSCEngine_MintFailed.selector);
+        mockDsce.depositCollateralAndMintDsc(address(mockDsc), amountCollateral, amountToMint);
+        vm.stopPrank();
     }
 
-    function testRevertsIfMintAmountIsZero() public {
-        
+    function testRevertsIfMintAmountIsZero() public depositedCollateral {
+        vm.expectRevert(DSCEngine.DSCEngine_NeedsMoreThanZero.selector);
+        dsce.mintDsc(0);
     }
 
-    function testRevertsIfMintAmountBreaksHealthFactor() public depositedCollateral {
-        // 0xe580cc6100000000000000000000000000000000000000000000000006f05b59d3b20000
-        // 0xe580cc6100000000000000000000000000000000000000000000003635c9adc5dea00000
-        
-    }
-
+    
     function testCanMintDsc() public depositedCollateral {
-        
+        vm.startPrank(user);
+        dsce.mintDsc(amountToMint);
+        uint256 userBalance = dsc.balanceOf(user);
+        assertEq(userBalance, amountToMint);
+        vm.stopPrank();
     }
 
     ///////////////////////////////////
@@ -189,7 +201,10 @@ contract DSCEngineTest is StdCheats, Test {
     ///////////////////////////////////
 
     function testRevertsIfBurnAmountIsZero() public {
-        
+        vm.startPrank(user);
+        vm.expectRevert(DSCEngine.DSCEngine_NeedsMoreThanZero.selector);
+        dsce.burnDsc(0);
+        vm.stopPrank();
     }
 
     function testCantBurnMoreThanUserHas() public {
