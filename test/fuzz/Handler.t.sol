@@ -63,14 +63,9 @@ contract Handler is Test {
       vm.stopPrank();
     }
 
-    function mintDsc(uint256 amount) public {
-      (uint256 totalDscMinted, uint256 collateralValueInUsd) = dsce.getAccountInfo(msg.sender);
- 
-      if(collateralValueInUsd/2 <= totalDscMinted) return;
-      amount = bound(amount, 1, uint256(collateralValueInUsd/2 - totalDscMinted));
-      vm.startPrank(msg.sender);
-      dsce.mintDsc(amount);
-      vm.stopPrank();
+    function updateCollateralPrice(uint96 newPrice) public {
+      int256 newPriceInt = int256(uint256(newPrice));
+      ethUsdPriceFeed.updateAnswer(newPriceInt);
     }
 
     function _getCollateralFromSeed(uint256 collateralSeed) private view returns(ERC20Mock){
