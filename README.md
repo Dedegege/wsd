@@ -8,6 +8,6 @@
     1. wETH
     2. wBTC
 4.  System invariants  
-    To ensure the solvency of the system : collateralValueInUsd > mintedDsc
+    1. To ensure the solvency of the system : collateralValueInUsd > mintedDscValue
 5.  Some proper oracle use
         
