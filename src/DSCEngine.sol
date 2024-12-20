@@ -25,7 +25,8 @@ import {OracleLib, AggregatorV3Interface} from "./libraries/OracleLib.sol";
  *
  * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic
  * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
- * @notice This contract is based on the MakerDAO DSS system
+ * @notice This contract is based on the MakerDAO (Dai Stablecoin System)
+ * @notice Dai is designed to be a USD stablecoin, targeting a 1:1 ratio
  */
 contract DSCEngine is ReentrancyGuard {
     error DSCEngine_NeedsMoreThanZero();
@@ -49,10 +50,10 @@ contract DSCEngine is ReentrancyGuard {
     mapping(address token => address priceFeed) private s_priceFeeds;
     // @dev Amount of collateral deposited by user
     mapping(address user => mapping(address collateralToken => uint256 amount))
-        private s_collateralDeposited;
-    /// @dev Amount of DSC minted by user
+    private s_collateralDeposited;
+    // @dev Amount of DSC minted by user
     mapping(address user => uint256 amount) private s_DSCMinted;
-    /// @dev If we know exactly how many tokens we have, we could make this immutable!
+    // @dev If we know exactly how many tokens we have, we could make this immutable!
     address[] private s_collateralTokens;
 
     DecentralizedStableCoin private immutable i_dsc;
@@ -95,7 +96,7 @@ contract DSCEngine is ReentrancyGuard {
         i_dsc = DecentralizedStableCoin(dscAddress);
     }
 
-    /*
+    /**
      *
      * @param tokenCollateralAddress The address of the token to deposit as collateral
      * @param amountCollateral The amount of collateral to deposit
@@ -111,7 +112,7 @@ contract DSCEngine is ReentrancyGuard {
         mintDsc(amountDscToMint);
     }
 
-    /*
+    /**
      * @notice follows CEI(check effects interactions)
      * @param token The address of the token to deposit as collateral
      * @param amount The amount of collateral to deposit
@@ -134,8 +135,8 @@ contract DSCEngine is ReentrancyGuard {
      *
      * @param tokenCollateralAddress The collateral address to redeem
      * @param amountCollateral The amount of collateral to redeem
-     * @param amountDscToBurn The amount of DSC to mint
-     * This function burns DSC and redeems underlying collateral in one transaction
+     * @param amountDscToBurn The amount of DSC to burn
+     * @notice This function burns DSC and redeems underlying collateral in one transaction
      */
     function redeemCollateralForDsc(
         address tokenCollateralAddress,
@@ -182,17 +183,18 @@ contract DSCEngine is ReentrancyGuard {
         _revertIfHealthFactorIsBroken(msg.sender);
     }
 
-    /*
+    /**
+     * 
      * @param collateral The erc20 collateral address to liquidate from the user
      * @param user The user who has broken the health factor
      * @param debtToCover The amount of DSC you want to burn to imporve the users health factor
      * @notice You can partially liquidate a user
      * @notice You will get a liquidation bonus for taking the users funds
-     * @notice: This function working assumes that the protocol will be roughly 150% overcollateralized in order for this
-     to work.
-     * @notice: A known bug would be if the protocol was only 100% collateralized, we wouldn't be able to liquidate
-     anyone.
-     * For example, if the price of the collateral plummeted before anyone could be liquidated.
+     * @notice This function working assumes that the protocol will be roughly 150% overcollateralized 
+     * in order for this to work
+     * @notice A known bug would be if the protocol was only 100% collateralized, we wouldn't be able 
+     * to liquidate anyone.For example, if the price of the collateral plummeted before anyone could 
+     * be liquidated
      */
     function liquidate(
         address collateral,
@@ -305,10 +307,7 @@ contract DSCEngine is ReentrancyGuard {
     function _healthFactor(address user) private view returns (uint256) {
         // total DSC minted
         // total collateral VALUE
-        (
-            uint256 totalDscMinted,
-            uint256 collateralValueInUsd
-        ) = _getAccountInfo(user);
+        (uint256 totalDscMinted,uint256 collateralValueInUsd) = _getAccountInfo(user);
         if (totalDscMinted == 0) return type(uint256).max;
         uint256 collateralAdjustedForthreshold = (collateralValueInUsd *
             LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
@@ -325,9 +324,7 @@ contract DSCEngine is ReentrancyGuard {
         address token,
         uint256 amount
     ) private view returns (uint256) {
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(
-            s_priceFeeds[token]
-        );
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
         (, int256 price, , , ) = priceFeed.staleCheckLatestRoundData();
         // If 1 ETH = 2000 USD
         // Then the returned value from Chainlink will be 2000 * 1e8 -> 2000 0000 0000
